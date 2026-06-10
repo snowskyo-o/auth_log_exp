@@ -107,7 +107,7 @@ docker-compose up --build -d
 
 ## 测试与日志生成
 
-最小冒烟测试：
+冒烟测试：
 
 ```bash
 npm test
@@ -119,7 +119,7 @@ npm test
 npm run smoke
 ```
 
-该测试会直接调用日志器，并验证 `login_app.log` 中写出的 ECS 风格 JSON 记录是否包含预期字段。
+直接调用日志器，并验证 `login_app.log` 中写出的 ECS 风格 JSON 记录是否包含预期字段。
 
 批量生成测试日志：
 
@@ -127,9 +127,9 @@ npm run smoke
 node scripts/run_tests.js
 ```
 
-这个脚本会模拟成功登录、错误密码、非法用户 ID 和重复失败触发锁定等场景，适合为实验分析生成样本日志。
+脚本模拟成功登录、错误密码、非法用户 ID 和重复失败触发锁定等场景，适合为实验分析生成样本日志。
 
-一键生成课程实验用的 `medium` 数据集：
+生成课程实验用的 `medium` 相较大规模数据集：
 
 ```bash
 npm run generate:medium
@@ -139,13 +139,13 @@ npm run generate:medium
 
 运行后会在 `generated/` 目录下产出：
 
-- `medium_login_app.log`：约 25,000 条 ECS 风格认证日志
-- `medium_users.json`：1,000 个模拟用户
-- `medium_dataset_summary.json`：数据集规模与事件分布摘要
+- `medium_login_app.log`：约 25,000 条 ECS 风格认证日志 （主要分析对象）
+- `medium_users.json`：用户数据
+- `medium_dataset_summary.json`：生成数据摘要
 
 ## 测试账号
 
-固定测试账号已写入 `db/init.sql`，并同步到 `data/users.json`：
+测试账号写入 `db/init.sql`，并同步到 `data/users.json`：
 
 - `2024000001` / `Study2026!`
 - `2024000002` / `UniAccess#1`
@@ -159,17 +159,10 @@ npm run generate:medium
 
 它支持两类输入：
 
-- 当前版本的 `winston` ECS 风格 JSON Lines 日志
+- 当前的基于 `winston` 工具ECS 风格 JSON Lines 日志
 - 旧版类 syslog 风格文本日志
 
-解析输出会统一成 ECS 风格字段，并自动做这些标准化处理：
-
-- 时间字段统一成 UTC ISO 8601 格式
-- `source.ip` 统一规范化，IPv4-mapped IPv6 会折叠成 IPv4
-- `server.port` 转为数值类型
-- `event.action`、`event.reason` 收敛成稳定枚举
-- 自动补齐 `event.kind`、`event.category`、`event.type`、`event.outcome`
-- 空字段自动移除
+解析输出会统一成 ECS 风格字段，并自动做标准化处理：（如果接入真正的日志分析程序 还是要检测对齐一下字段，很有可能会出现不一致）
 
 示例：
 
