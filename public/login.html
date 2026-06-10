@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth Log Experiment</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f3ee;
+      --card: rgba(255, 255, 255, 0.9);
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-strong: #0b4f49;
+      --danger: #b91c1c;
+      --success: #047857;
+      --border: rgba(31, 41, 55, 0.12);
+      --shadow: 0 24px 64px rgba(17, 24, 39, 0.14);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Noto Sans SC", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top left, #fff8ef, transparent 36%), linear-gradient(180deg, #f7f3ee, #ece4da);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .shell {
+      width: min(100%, 440px);
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      backdrop-filter: blur(14px);
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
+    .field { display: grid; gap: 6px; margin-bottom: 14px; }
+    label { font-size: 13px; color: var(--muted); }
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font: inherit;
+      background: #fff;
+    }
+    input:focus { outline: none; border-color: rgba(15,118,110,.45); box-shadow: 0 0 0 3px rgba(15,118,110,.14); }
+    button {
+      width: 100%;
+      margin-top: 4px;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 16px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    }
+    .notice {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .notice.show { display: block; }
+    .notice.error { background: rgba(185,28,28,.08); color: var(--danger); border: 1px solid rgba(185,28,28,.2); }
+    .notice.success { background: rgba(4,120,87,.08); color: var(--success); border: 1px solid rgba(4,120,87,.2); }
+    .hint { margin-top: 14px; font-size: 12px; color: var(--muted); }
+    .hint code { background: rgba(15,118,110,.08); padding: 2px 6px; border-radius: 999px; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1>登录实验</h1>
+    <p>输入用户名、密码和来源 IP，提交后会记录登录成功、失败与锁定日志。</p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="userId">用户名 / 一卡通号</label>
+        <input id="userId" name="userId" placeholder="10 位数字" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" />
+      </div>
+      <div class="field">
+        <label for="sourceIp">来源 IP</label>
+        <input id="sourceIp" name="sourceIp" placeholder="例如 192.168.1.10" />
+      </div>
+      <button type="submit">登录</button>
+      <div id="errorBox" class="notice error"></div>
+      <div id="successBox" class="notice success"></div>
+    </form>
+    <div class="hint">默认测试口令：<code>ChangeMe123!</code></div>
+  </main>
+  <script>
+    const form = document.getElementById('loginForm');
+    const errorBox = document.getElementById('errorBox');
+    const successBox = document.getElementById('successBox');
+    const userIdInput = document.getElementById('userId');
+    const passwordInput = document.getElementById('password');
+    const sourceIpInput = document.getElementById('sourceIp');
+
+    function show(target, message) {
+      target.textContent = message || '';
+      target.classList.toggle('show', Boolean(message));
+    }
+
+    function getAutoIp() {
+      return '127.0.0.1';
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      show(errorBox, '');
+      show(successBox, '');
+
+      const userId = userIdInput.value.trim();
+      const password = passwordInput.value;
+      const sourceIp = sourceIpInput.value.trim() || getAutoIp();
+
+      if (!/^\d{10}$/.test(userId)) {
+        show(errorBox, '用户名必须是 10 位数字');
+        return;
+      }
+      if (!password) {
+        show(errorBox, '请输入密码');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, password, sourceIp }),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          show(errorBox, payload.message || '登录失败');
+          return;
+        }
+        localStorage.setItem('auth_access_token', payload.data.accessToken || '');
+        localStorage.setItem('auth_user_id', userId);
+        localStorage.setItem('auth_role', payload.data.role || '');
+        show(successBox, '登录成功，已记录实验日志');
+      } catch (err) {
+        show(errorBox, '无法连接实验服务');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "auth-log-exp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node -e \"console.log('add login tests later')\""
+  }
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "2022000001",
+    "name": "Academic Demo",
+    "role": "academic",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "fd306fe82abf96fec6c5b60aaf18fec860fe80ecfc5d7fe3f6835ff4381e09ee",
+    "lastLoginAt": null
+  },
+  {
+    "id": "2023000001",
+    "name": "Teacher Demo",
+    "role": "teacher",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "c59616adf5decd86b65cb265972fec726726762f91d8c12c90057ba5ed2b400e",
+    "lastLoginAt": null
+  },
+  {
+    "id": "2023019001",
+    "name": "Assistant Demo",
+    "role": "assistant",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "246359d11c9933fd4d404a80f934ae9871550c4c70819eaab4a1c177eef8d153",
+    "lastLoginAt": null
+  },
+  {
+    "id": "2023010001",
+    "name": "Student Demo",
+    "role": "student",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "7ef379481ca63ce39f2e7ec6f6bdd7272d4e37ed65197222f7045eb69d045818",
+    "lastLoginAt": "2026-06-10T12:26:03.841Z"
+  }
+]
