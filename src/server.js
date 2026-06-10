@@ -8,7 +8,8 @@ const { handleAuthRequest } = require('./auth/auth-router');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
-const PORT = Number(process.env.PORT || 3001);
+// Default port is 3004 to match Docker setup and README guidance.
+const PORT = Number(process.env.PORT || 3004);
 
 let shuttingDown = false;
 
