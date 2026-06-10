@@ -8,6 +8,7 @@
     "winston": "^3.19.0"
   },
   "scripts": {
+    "generate:medium": "node scripts/medi_dataset.js",
     "start": "node src/server.js",
     "smoke": "node tests/smoke.js",
     "test": "node tests/smoke.js"

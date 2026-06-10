@@ -12,7 +12,7 @@
 - 本地用户数据：`data/users.json`
 - 数据库初始化：`db/init.sql`
 
-当前日志系统已经完全切换到 `winston`。应用启动、登录成功、登录失败、账户锁定、服务异常等事件都会写入 `logs/login_app.log`，并同步输出到控制台。
+当前日志系统使用 `winston`。应用启动、登录成功、登录失败、账户锁定、服务异常等事件都会写入 `logs/login_app.log`，并同步输出到控制台。
 
 ## 快速开始
 
@@ -128,6 +128,20 @@ node scripts/run_tests.js
 ```
 
 这个脚本会模拟成功登录、错误密码、非法用户 ID 和重复失败触发锁定等场景，适合为实验分析生成样本日志。
+
+一键生成课程实验用的 `medium` 数据集：
+
+```bash
+npm run generate:medium
+```
+
+对应脚本是 `scripts/medi_dataset.js`。
+
+运行后会在 `generated/` 目录下产出：
+
+- `medium_login_app.log`：约 25,000 条 ECS 风格认证日志
+- `medium_users.json`：1,000 个模拟用户
+- `medium_dataset_summary.json`：数据集规模与事件分布摘要
 
 ## 测试账号
 

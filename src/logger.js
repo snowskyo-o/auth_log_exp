@@ -105,9 +105,10 @@ function buildEcsRecord(info) {
   const eventCode = String(extra.event || extra.event_type || '').trim();
   const eventAction = mapEventAction(eventCode, extra);
   const metadata = EVENT_METADATA[eventAction] || EVENT_METADATA.unknown;
+  const timestamp = extra['@timestamp'] || extra.timestamp || new Date().toISOString();
 
   const record = {
-    '@timestamp': new Date().toISOString(),
+    '@timestamp': timestamp,
     message: defaultMessage(eventAction, extra),
     'log.level': String(info.level || 'info').toUpperCase(),
     'host.name': os.hostname(),
@@ -155,6 +156,8 @@ function buildEcsRecord(info) {
         'forceChangePassword',
         'lockedUntil',
         'role',
+        '@timestamp',
+        'timestamp',
       ].includes(key)
     ) {
       continue;
@@ -197,6 +200,7 @@ module.exports = {
   LOG_DIR,
   LOG_FILE,
   SERVICE_NAME,
+  buildEcsRecord,
   logger,
   writeLog,
 };

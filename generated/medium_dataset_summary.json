@@ -1,0 +1,21 @@
+{
+  "profile": "medium",
+  "generatedAt": "2026-06-10T16:39:51.432Z",
+  "seed": 20260611,
+  "users": 1000,
+  "distinctIps": 300,
+  "totalLogs": 25000,
+  "timeSpanDays": 7,
+  "logFile": "generated\\medium_login_app.log",
+  "userFile": "generated\\medium_users.json",
+  "byEventAction": {
+    "service_start": 70,
+    "service_stop": 50,
+    "service_error": 130,
+    "app_request": 12375,
+    "auth_success": 8663,
+    "auth_failed": 2977,
+    "invalid_input": 619,
+    "account_locked": 116
+  }
+}
