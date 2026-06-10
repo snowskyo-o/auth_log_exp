@@ -97,7 +97,9 @@ function toLine(entry) {
 function writeLog(entry) {
   try {
     const line = toLine(entry) + '\n';
-    fs.appendFileSync(LOG_FILE, line, 'utf8');
+      fs.appendFileSync(LOG_FILE, line, 'utf8');
+      // also print to stdout so running terminal shows live logs
+      try { console.log(line.trim()); } catch (e) {}
   } catch (err) {
     // best-effort: if logging fails, write to console but avoid throwing
     try { console.error('logger write failed', err && err.message); } catch (e) {}
