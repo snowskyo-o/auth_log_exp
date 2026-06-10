@@ -48,17 +48,17 @@ async function handleLogin(req, res, body) {
     requestId,
     method: 'POST',
     path: '/api/v1/auth/login',
-    sourceIp,
-    userId: String(userId || ''),
-  });
+    src_ip: sourceIp,
+    user: String(userId || ''),
+  }, 'info');
 
   if (!userId || !password || !isValidUserId(userId)) {
     logEvent('auth.login_fail', {
       requestId,
-      sourceIp,
-      userId: String(userId || ''),
+      src_ip: sourceIp,
+      user: String(userId || ''),
       reason: 'validation_failed',
-    });
+    }, 'warning');
     return fail(res, 400, 'VALIDATION_FAILED', 'userId must be 10 digits and password is required');
   }
 
@@ -66,12 +66,12 @@ async function handleLogin(req, res, body) {
     const state = recordFailure(userId);
     logEvent('auth.account_locked', {
       requestId,
-      sourceIp,
-      userId,
+      src_ip: sourceIp,
+      user: String(userId || ''),
       failCount: state.count,
       lockedUntil: new Date(state.lockedUntil).toISOString(),
       reason: 'too_many_failures',
-    });
+    }, 'error');
     return fail(res, 423, 'CONFLICT', 'Too many failed attempts. Try again later.');
   }
 
@@ -80,11 +80,11 @@ async function handleLogin(req, res, body) {
     const state = recordFailure(userId);
     logEvent('auth.login_fail', {
       requestId,
-      sourceIp,
-      userId,
+      src_ip: sourceIp,
+      user: String(userId || ''),
       failCount: state.count,
       reason: 'user_not_found_or_disabled',
-    });
+    }, 'warning');
     return invalidCredentials(res);
   }
 
@@ -93,12 +93,12 @@ async function handleLogin(req, res, body) {
     const state = recordFailure(userId);
     logEvent('auth.login_fail', {
       requestId,
-      sourceIp,
-      userId,
+      src_ip: sourceIp,
+      user: String(userId || ''),
       failCount: state.count,
       lockedUntil: state.lockedUntil ? new Date(state.lockedUntil).toISOString() : null,
       reason: 'password_mismatch',
-    });
+    }, 'warning');
     return invalidCredentials(res);
   }
 
@@ -110,11 +110,11 @@ async function handleLogin(req, res, body) {
 
   logEvent('auth.login_success', {
     requestId,
-    sourceIp,
-    userId: user.id,
+    src_ip: sourceIp,
+    user: user.id,
     role: user.role,
     forceChangePassword: Boolean(user.forceChangePassword),
-  });
+  }, 'info');
 
   return ok(res, {
     accessToken,
@@ -136,8 +136,9 @@ async function handleRefresh(req, res, body) {
     return fail(res, 401, 'UNAUTHENTICATED', 'Invalid or expired refresh token');
   }
 
-  const user = findUser(userId);
+  const user = await findUser(userId);
   if (!user || !user.isActive) {
+    logEvent('auth.login_fail', { requestId: getRequestId(req), src_ip: getSourceIp(req, body || {}), user: String(userId || ''), reason: 'user_not_found_or_disabled' }, 'warning');
     return fail(res, 401, 'UNAUTHENTICATED', 'User not found or disabled');
   }
 

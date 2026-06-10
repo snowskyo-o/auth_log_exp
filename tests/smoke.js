@@ -12,7 +12,7 @@ function main() {
     level: 'info',
     event: 'auth.login_success',
     user: '2024000001',
-    sourceIp: '192.168.1.10',
+    src_ip: '192.168.1.10',
     message: 'login success',
   });
 
