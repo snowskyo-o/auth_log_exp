@@ -1,0 +1,16 @@
+test_case,userId,password,sourceIp,expected_event_type,expected_note
+successful_login,2024000001,Study2026!,127.0.0.1,auth_success,登录成功应记录auth_success
+bad_password,2024000001,wrongpass,127.0.0.1,auth_failed,失败应记录auth_failed且原因password_mismatch
+invalid_input,abc,pass,127.0.0.1,invalid_input,用户名格式非法应记录invalid_input
+account_lock,2024000002,bad,127.0.0.2,account_locked,连续失败达到阈值后应记录account_locked
+case_id,user_id,password,source_ip,expected_result,expected_event_type,notes
+T01,2024000001,Study2026!,192.168.1.10,success,auth_success,valid student login
+T02,2024000002,WrongPass#1,192.168.1.11,failure,auth_failed,bad password
+T03,2024000009,AnyPass123,192.168.1.12,failure,auth_failed,invalid user
+T04,2024000003,,192.168.1.13,failure,invalid_input,missing password
+T05,2024000004,SecurePass88,192.168.1.14,success,auth_success,valid student login
+T06,2024000005,WrongPass#2,192.168.1.15,failure,auth_failed,bad password
+T07,2024000005,WrongPass#2,192.168.1.15,failure,auth_failed,bad password
+T08,2024000005,WrongPass#2,192.168.1.15,failure,auth_failed,bad password
+T09,2024000005,WrongPass#2,192.168.1.15,failure,auth_failed,bad password
+T10,2024000005,WrongPass#2,192.168.1.15,locked,account_locked,threshold reached
