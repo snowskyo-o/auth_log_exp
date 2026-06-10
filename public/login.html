@@ -82,7 +82,7 @@
 <body>
   <main class="shell">
     <h1>登录实验</h1>
-    <p>输入用户名、密码和来源 IP，提交后会记录登录成功、失败与锁定日志。</p>
+    <p>输入用户名与密码，提交后会记录登录成功、失败与锁定日志。来源 IP 将由服务器根据连接/代理头自动检测（无需手动填写）。</p>
     <form id="loginForm">
       <div class="field">
         <label for="userId">用户名 / 一卡通号</label>
@@ -92,10 +92,7 @@
         <label for="password">密码</label>
         <input id="password" name="password" type="password" autocomplete="current-password" />
       </div>
-      <div class="field">
-        <label for="sourceIp">来源 IP</label>
-        <input id="sourceIp" name="sourceIp" placeholder="例如 192.168.1.10" />
-      </div>
+      <!-- sourceIp removed: server auto-detects client IP -->
       <button type="submit">登录</button>
       <div id="errorBox" class="notice error"></div>
       <div id="successBox" class="notice success"></div>
@@ -126,7 +123,7 @@
 
       const userId = userIdInput.value.trim();
       const password = passwordInput.value;
-      const sourceIp = sourceIpInput.value.trim() || getAutoIp();
+      // Do not send client-supplied IP; server will detect `src_ip` itself.
 
       if (!/^\d{10}$/.test(userId)) {
         show(errorBox, '用户名必须是 10 位数字');
@@ -141,7 +138,7 @@
         const response = await fetch('/api/v1/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, password, sourceIp }),
+          body: JSON.stringify({ userId, password }),
         });
         const payload = await response.json();
         if (!response.ok || !payload.ok) {

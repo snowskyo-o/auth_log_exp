@@ -28,7 +28,17 @@ function invalidCredentials(res) {
 }
 
 function getSourceIp(req, body) {
-  return String(body.sourceIp || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown');
+  // By default prefer server-detected IP (X-Forwarded-For or socket.remoteAddress).
+  // Only accept client-supplied `body.sourceIp` when ALLOW_CLIENT_SOURCE_IP=true (for testing).
+  const allowClient = String(process.env.ALLOW_CLIENT_SOURCE_IP || '').toLowerCase() === 'true';
+  if (allowClient && body && body.sourceIp) {
+    return String(body.sourceIp);
+  }
+  const forwarded = req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For'];
+  if (forwarded) return String(forwarded).split(',')[0].trim();
+  const addr = req.socket && req.socket.remoteAddress;
+  if (addr) return String(addr).replace(/^::ffff:/, '');
+  return 'unknown';
 }
 
 function getRequestId(req) {

@@ -68,6 +68,8 @@ PORT=3004 node src/server.js
 
 - 日志文件 `logs/login_app.log` 由后端 `src/logger.js` 自动写入：服务启动、认证成功/失败、账户锁定、输入校验错误与服务异常等事件都会追加到该文件。启动服务前请确保项目根目录下存在 `logs/` 目录（项目启动时通常会自动创建）。
 
+**来源 IP 检测**：服务器会优先使用 `X-Forwarded-For`（如果存在）再回退到连接的 `remoteAddress` 来确定 `src_ip`，前端无需手动填写来源 IP。仅在你明确需要测试客户端伪造 IP 的场景下，可以通过环境变量 `ALLOW_CLIENT_SOURCE_IP=true` 允许前端在请求体中提交 `sourceIp`（不推荐在生产环境使用）。
+
 ### Test accounts
 
 固定测试账号已写入 `db/init.sql`（并同步到 `data/users.json`），示例：
