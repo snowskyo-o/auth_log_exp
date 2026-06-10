@@ -9,6 +9,7 @@
   },
   "scripts": {
     "generate:medium": "node scripts/medi_dataset.js",
+    "logs:view": "node scripts/view_logs.js",
     "start": "node src/server.js",
     "smoke": "node tests/smoke.js",
     "test": "node tests/smoke.js"

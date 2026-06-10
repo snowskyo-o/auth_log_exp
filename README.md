@@ -143,6 +143,35 @@ npm run generate:medium
 - `medium_users.json`：用户数据
 - `medium_dataset_summary.json`：生成数据摘要
 
+## 日志查看器
+
+项目提供了一个轻量查看器脚本 [view_logs.js](c:/Users/14300/Desktop/网络安全/auth_log_exp/scripts/view_logs.js:1)，用法参考 Linux 上 `journalctl` 的常见查看方式，但只保留最常用的几个命令。
+
+命令入口：
+
+```bash
+npm run logs:view -- <command> [args]
+```
+
+常用命令：
+
+```bash
+npm run logs:view -- short
+npm run logs:view -- tail generated/medium_login_app.log --lines 20
+npm run logs:view -- grep auth_failed generated/medium_login_app.log --field event.action
+npm run logs:view -- grep 203.0.113.44 generated/medium_login_app.log --field source.ip
+npm run logs:view -- stats generated/medium_login_app.log
+npm run logs:view -- json generated/medium_login_app.log --limit 5
+```
+
+命令说明：
+
+- `short`：人类可读的一行式日志视图
+- `tail`：查看最后 N 条
+- `grep`：按全文或指定字段过滤
+- `stats`：输出常见字段统计
+- `json`：查看最近几条原始结构化日志
+
 ## 测试账号
 
 测试账号写入 `db/init.sql`，并同步到 `data/users.json`：
