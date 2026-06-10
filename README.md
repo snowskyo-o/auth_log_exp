@@ -39,7 +39,22 @@ tail -f logs/login_app.log
 npm install
 ```
 
-2. 启动服务：
+2. 启动服务（示例）：
+
+- PowerShell（Windows，会话级环境变量）：
+
+```powershell
+$Env:PORT='3004'
+node src/server.js
+```
+
+- CMD（Windows 临时设置）：
+
+```cmd
+set PORT=3004 && node src/server.js
+```
+
+- bash（macOS / Linux / Git Bash）:
 
 ```bash
 PORT=3004 node src/server.js
@@ -74,8 +89,13 @@ PORT=3004 node src/server.js
 
 ```bash
 npm install
-node src/server.js        # 或使用 PORT=3004 node src/server.js
+# PowerShell (Windows)
+$Env:PORT='3004'; node src/server.js
+# 或在另一个终端单独运行 node src/server.js
 node tests/smoke.js
+
+# bash (macOS / Linux / Git Bash)
+# PORT=3004 node src/server.js
 ```
 
 - 批量/场景化测试（生成用于分析的日志）：编辑 `scripts/run_tests.js` 中的参数（总请求数、并发、失败比率、是否并发），然后运行：
