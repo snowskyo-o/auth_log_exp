@@ -186,7 +186,8 @@ python scripts/parse_logs.py logs/login_app.log --format csv > parsed.csv
 - 本地模式默认使用 `data/users.json`
 - 高频并发测试更建议用 Docker + Postgres，避免 JSON 文件并发写入带来的竞态
 - 这套字段命名是 ECS 风格近似映射，适合课程实验和日志分析；如果后续接入完整 ELK，可以继续细化字段集
-- Windows 日志 / Linux auth.log / 自己的 login_app.log / Web 访问日志
+```bash
+Windows 日志 / Linux auth.log / 自己的 login_app.log / Web 访问日志
         ↓
        采集
         ↓
@@ -199,3 +200,4 @@ python scripts/parse_logs.py logs/login_app.log --format csv > parsed.csv
     统一数据集
         ↓
 KPI 分析 / 安全分析 / 可视化
+```
