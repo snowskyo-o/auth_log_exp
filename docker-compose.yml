@@ -21,6 +21,12 @@ services:
       - "3004:3004"
     environment:
       - PORT=3004
+      - USE_DB=true
+      - PGHOST=auth-db
+      - PGUSER=auth_user
+      - PGPASSWORD=auth_pass
+      - PGDATABASE=auth_log_exp
+      - PGPORT=5432
     depends_on:
       - auth-db
     volumes:

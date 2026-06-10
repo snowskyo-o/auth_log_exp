@@ -1,38 +1,48 @@
 [
+[
   {
-    "id": "2022000001",
-    "name": "Academic Demo",
-    "role": "academic",
-    "isActive": true,
-    "forceChangePassword": false,
-    "passwordHash": "fd306fe82abf96fec6c5b60aaf18fec860fe80ecfc5d7fe3f6835ff4381e09ee",
-    "lastLoginAt": null
-  },
-  {
-    "id": "2023000001",
-    "name": "Teacher Demo",
-    "role": "teacher",
-    "isActive": true,
-    "forceChangePassword": false,
-    "passwordHash": "c59616adf5decd86b65cb265972fec726726762f91d8c12c90057ba5ed2b400e",
-    "lastLoginAt": null
-  },
-  {
-    "id": "2023019001",
-    "name": "Assistant Demo",
-    "role": "assistant",
-    "isActive": true,
-    "forceChangePassword": false,
-    "passwordHash": "246359d11c9933fd4d404a80f934ae9871550c4c70819eaab4a1c177eef8d153",
-    "lastLoginAt": null
-  },
-  {
-    "id": "2023010001",
-    "name": "Student Demo",
+    "id": "2024000001",
+    "name": "Student One",
     "role": "student",
     "isActive": true,
     "forceChangePassword": false,
-    "passwordHash": "7ef379481ca63ce39f2e7ec6f6bdd7272d4e37ed65197222f7045eb69d045818",
-    "lastLoginAt": "2026-06-10T12:26:03.841Z"
+    "passwordHash": "3a1eda9fd96ac6f38782d6b0c2cdaecdb32659c23d350e5c2bf4fd69177aec13",
+    "lastLoginAt": null
+  },
+  {
+    "id": "2024000002",
+    "name": "Student Two",
+    "role": "student",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "01e2e3d041a0d43158f6c5771afc323a6c1dacaa48d26f6a9402df6906d3fb01",
+    "lastLoginAt": null
+  },
+  {
+    "id": "2024000003",
+    "name": "Student Three",
+    "role": "student",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "59a855244c428fa3797bf3aaa418ce418b0e1fc036b9a8ac838a380a151087d7",
+    "lastLoginAt": null
+  },
+  {
+    "id": "2024000004",
+    "name": "Student Four",
+    "role": "student",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "8ad4bbdb83840db1250d6c80c0aa250234bb6c1842bf3da761bbe231867c74ae",
+    "lastLoginAt": null
+  },
+  {
+    "id": "2024000005",
+    "name": "Student Five",
+    "role": "student",
+    "isActive": true,
+    "forceChangePassword": false,
+    "passwordHash": "7f670b74f490e9a39b7338bbb2ae8d5d3b10560670800ac4991b483f4ce3ffb7",
+    "lastLoginAt": null
   }
 ]

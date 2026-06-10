@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "commonjs",
+  "dependencies": {
+    "pg": "^8.10.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "test": "node -e \"console.log('add login tests later')\""

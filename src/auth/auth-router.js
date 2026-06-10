@@ -75,7 +75,7 @@ async function handleLogin(req, res, body) {
     return fail(res, 423, 'CONFLICT', 'Too many failed attempts. Try again later.');
   }
 
-  const user = findUser(userId);
+  const user = await findUser(userId);
   if (!user || !user.isActive) {
     const state = recordFailure(userId);
     logEvent('auth.login_fail', {
@@ -106,7 +106,7 @@ async function handleLogin(req, res, body) {
   const accessToken = signAccessToken({ sub: user.id, role: user.role, forceChangePassword: Boolean(user.forceChangePassword) });
   const refreshToken = createRefreshToken();
   await storeRefreshToken(refreshToken, user.id);
-  updateUser(user.id, { lastLoginAt: new Date().toISOString() });
+  await updateUser(user.id, { lastLoginAt: new Date().toISOString() });
 
   logEvent('auth.login_success', {
     requestId,
