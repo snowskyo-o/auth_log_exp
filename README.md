@@ -2,35 +2,32 @@
 
 轻量级登录实验项目（实验 3：程序设计与日志记录）。目标：提供可运行的登录服务、统一的 syslog 风格文本日志、固定测试账户，以及便于后续解析的工具和测试用例。
 
-## 主要变更与约定
+## 环境差异（本地 vs Docker）
 
-- 本仓库已调整为使用单一 syslog 风格文本日志，输出文件：`logs/login_app.log`。
-- Docker 服务端口已设为 `3004`（`docker-compose.yml` 中 `app` 服务映射为 `3004:3004`）。
-- 使用固定测试帐户（写入 `db/init.sql`），不再使用运行时的种子脚本。
+- 本地运行（默认）：服务使用 `data/users.json` 作为用户数据源。适合快速调试和不希望启动数据库的场景。
+- Docker 运行（使用 `docker-compose`）：`docker-compose.yml` 中为 `app` 服务设置了环境变量 `USE_DB=true`，此时服务会连接容器内的 Postgres（由 `auth-db` 服务提供）并从 `users` 表查询/更新用户数据。`db/init.sql` 中的固定测试账号会在数据库初始化时写入。
 
 ## 目录说明
 
 - `public/`：简单前端登录页面（`login.html`）。
 - `src/`：服务端源码（入口 `src/server.js`、日志 `src/logger.js`、认证 `src/auth/*`）。
-- `data/`：备用的本地数据文件（当前不作为主要测试账户源，数据库 init.sql 中已插入固定测试用户）。
-- `logs/`：运行时日志目录，主日志文件为 `logs/login_app.log`。
-- `scripts/`：辅助脚本：`run_tests.js`（模拟登录请求），`parse_logs.py`（将 `login_app.log` 解析为 JSON / CSV）。
-- `db/`：Postgres 初始化脚本，包含固定测试账户的 INSERT 语句。
-- `tests/`：测试用例 CSV（`tests/test_cases.csv`）以及其他测试说明。
+- `data/`：本地数据文件
+# auth_log_exp
 
-## 测试账户（已写入 `db/init.sql`）
+轻量级登录实验项目（实验 3：程序设计与日志记录）。目标：提供可运行的登录服务、统一的 syslog 风格文本日志、固定测试账户，以及便于后续解析的工具和测试用例。
 
-请在 Docker 环境中使用以下账号密码进行测试（密码在数据库中以 scrypt(id) 哈希存储）：
+## Overview
 
-- 用户 ID: `2024000001`   密码: `Study2026!`
-- 用户 ID: `2024000002`   密码: `UniAccess#1`
-- 用户 ID: `2024000003`   密码: `Welcome2026$`
-- 用户 ID: `2024000004`   密码: `SecurePass88`
-- 用户 ID: `2024000005`   密码: `Campus2026!`
+本仓库实现了：
 
-（注意：这些仅用于实验和演示，请勿用于生产环境。）
+- 一个最小的登录服务（前端 `public/login.html` + 后端 `src/server.js`）。
+- 认证逻辑（`src/auth`），包含密码校验、失败计数与账户锁定、access/refresh token 管理。
+- 单一的 syslog 风格日志输出（`logs/login_app.log`），字段结构便于后续解析为 CSV/JSON。
+- 可在本地使用 `data/users.json` 运行，也可通过 Docker 启动并在容器中使用 Postgres（由 `db/init.sql` 提供固定测试账号）。
 
-## 使用 Docker 启动
+## Quick Start
+
+### Docker
 
 1. 在项目根目录构建并启动服务：
 
@@ -38,17 +35,17 @@
 docker-compose up --build -d
 ```
 
-2. 等待服务启动后访问前端：
+2. 访问前端：
 
 打开 http://localhost:3004 或 http://127.0.0.1:3004/login.html
 
-3. 查看日志文件（宿主机）：
+3. 查看日志：
 
 ```bash
 tail -f logs/login_app.log
 ```
 
-## 本地运行（不使用 Docker）
+### Local (no Docker)
 
 1. 安装依赖：
 
@@ -56,79 +53,65 @@ tail -f logs/login_app.log
 npm install
 ```
 
-2. 启动服务（推荐将端口设为 3004）：
+2. 启动服务：
 
 ```bash
 PORT=3004 node src/server.js
 ```
 
-3. 打开浏览器访问： http://localhost:3004/login.html
+3. 访问前端： http://localhost:3004/login.html
 
-## 快速测试
+## Testing & Logs
 
-- 使用内置脚本运行一批示例请求（需要本地服务或 Docker 中的服务可访问）：
+### Test accounts
 
-```bash
-node scripts/run_tests.js
-```
+固定测试账号已写入 `db/init.sql`（并同步到 `data/users.json`），示例：
 
-该脚本会依次发出几条登录请求并模拟多次失败以触发锁定机制。运行后请检查 `logs/login_app.log` 是否包含期望的事件。
+- `2024000001` / `Study2026!`
+- `2024000002` / `UniAccess#1`
+- `2024000003` / `Welcome2026$`
+- `2024000004` / `SecurePass88`
+- `2024000005` / `Campus2026!`
 
-## 解析日志（实验 4 用）
+### Quick test scripts
 
-- 提供了 `scripts/parse_logs.py`，用于把 `logs/login_app.log` 解析为 JSON（stdout）并在 `logs/parsed_logs.csv` 中写入表格化结果：
+- `node scripts/run_tests.js`：模拟若干登录请求并触发锁定.\
+- `node tests/smoke.js`：本地 smoke 测试（检查 logger 输出）。
 
-```bash
-python3 scripts/parse_logs.py logs/login_app.log > parsed.json
-# 或仅使用默认日志路径
-python3 scripts/parse_logs.py > parsed.json
-```
+### Log parsing
 
-解析后可进一步转换为 CSV/JSON 数据集用于实验 4 的 KPI 分析。
+- `python3 scripts/parse_logs.py`：解析 `logs/login_app.log`，输出 JSON 并写入 `logs/parsed_logs.csv`。
 
-## 日志格式示例（syslog 风格，每行为一条）：
-
-示例：服务启动
-
-```
-2026-06-10T12:00:00.000Z myhost login_app: level=INFO event_type=service_start message="service started" port=3004
-```
-
-示例：认证成功
+日志示例：
 
 ```
 2026-06-10T12:05:12.345Z myhost login_app: level=INFO event_type=auth_success user=2024000001 src_ip=127.0.0.1 message="login success"
 ```
 
-示例：认证失败（原因：密码错误）
+## Architecture
 
-```
-2026-06-10T12:06:00.123Z myhost login_app: level=WARNING event_type=auth_failed user=2024000001 src_ip=127.0.0.1 message="login failed" reason=password_mismatch failCount=1
-```
+### Project layout
 
-示例：账户被锁定
+- `public/` — 前端登录页面。\
+- `src/` — 后端源码（入口：`src/server.js`；日志：`src/logger.js`；认证子模块在 `src/auth/`）。\
+- `data/` — 本地用户数据（仅在非 Docker 模式下使用）。\
+- `db/` — Postgres 初始化脚本（用于 Docker 模式）。\
+- `logs/` — 运行时日志（`login_app.log`）。\
+- `scripts/` — 辅助脚本（解析、测试）。
 
-```
-2026-06-10T12:07:30.000Z myhost login_app: level=ERROR event_type=account_locked user=2024000002 src_ip=127.0.0.2 message="account locked due to repeated failures" failCount=5 lockedUntil=2026-06-10T12:22:30.000Z
-```
+### `src/auth` 目录（关键文件）
 
-字段说明：每条日志包含 `timestamp host login_app:` 前缀，之后以 `key=value` 形式给出固定字段 `level`、`event_type`、`user`、`src_ip`、`message`，以及其它可选分析字段（例如 `reason`、`failCount`、`lockedUntil`）。
+- `auth-router.js`：处理 `/api/v1/auth/*` 路由，负责输入校验、锁定检查、密码验证、token 签发、更新最后登录时间，并在每个关键点写日志（成功/失败/锁定/非法输入）。日志字段统一为 `user` 与 `src_ip`。
+- `login-rate-limit.js`：实现内存失败计数与锁定（默认 5 次失败 → 锁定 15 分钟）。\
+- `user-store.js`：提供两种后端：本地 JSON（`data/users.json`）与 Postgres（当环境变量 `USE_DB=true` 时）。对外提供 `findUser` / `updateUser`（异步兼容）。\
+- `token-service.js`：签发 HMAC 签名的 access token，并用内存 Map 管理一次性 refresh token。
 
-## 测试用例清单
+## Security & Notes
 
-- 请参见 `tests/test_cases.csv`，其中定义了若干典型测试输入与期望事件类型，便于人工或脚本化验证。
-
-## 注意与安全要求
-
-- 不记录明文密码或完整敏感 token。
-- 日志仅写入失败原因标签（如 `bad_password`、`invalid_user`、`locked`、`invalid_input`）。
-- 异常路径会记录 `service_error`，但不会将完整堆栈写入主日志以避免泄露敏感数据。
-
-## 代码相关说明
-
-- `src/logger.js`：负责把事件格式化为 syslog 风格文本并追加到 `logs/login_app.log`。
-- `src/auth/auth-router.js`：认证路由，触发登录成功、失败与锁定事件；`src/logger.js` 会把这些事件映射到规范的 `event_type`。
+- 主日志禁止记录明文密码或完整 tokens。\
+- 日志包含失败原因标签（`password_mismatch`、`user_not_found_or_disabled`、`validation_failed`、`too_many_failures` 等），便于后续分析。\
+- 如果需要更强的持久性或生产级安全，请将 refresh token 存储迁移到持久存储（DB/Redis），并对 `token_service` 引入更严格的密钥管理。
 
 ---
 
-如需我继续增加自动化测试或把 `logs/` 目录改为持久卷映射到特定路径，请告诉我。
+查看源代码文件以了解实现细节：`src/logger.js`、`src/auth/auth-router.js`、`src/auth/user-store.js`。
