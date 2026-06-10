@@ -1,78 +1,137 @@
 # auth_log_exp
 
-轻量级登录实验项目（实验 3）。目标：提供可运行的登录服务、统一的 syslog 风格文本日志、固定测试账户，以及便于后续解析的工具和测试用例。
+轻量级登录实验项目（实验 3）。项目提供一个可运行的登录服务，并使用 `winston` 输出接近 Elastic Common Schema（ECS）风格的结构化 JSON 日志，方便做认证行为统计、异常检测和后续日志分析实验。
 
-## Overview
+## 项目概览
 
-本仓库实现了：
+- 前端页面：`public/login.html`
+- 服务入口：`src/server.js`
+- 认证逻辑：`src/auth/`
+- 日志实现：`src/logger.js`
+- 日志解析：`scripts/parse_logs.py`
+- 本地用户数据：`data/users.json`
+- 数据库初始化：`db/init.sql`
 
-- 一个最小的登录服务（前端 `public/login.html` + 后端 `src/server.js`）。
-- 认证逻辑（`src/auth`），包含密码校验、失败计数与账户锁定、access/refresh token 管理。
-- 单一的 syslog 风格日志输出（`logs/login_app.log`），字段结构便于后续解析为 CSV/JSON。
-- 可在本地使用 `data/users.json` 运行，也可通过 Docker 启动并在容器中使用 Postgres（由 `db/init.sql` 提供固定测试账号）。
+当前日志系统已经完全切换到 `winston`。应用启动、登录成功、登录失败、账户锁定、服务异常等事件都会写入 `logs/login_app.log`，并同步输出到控制台。
 
-## Quick Start
+## 快速开始
 
-### Docker
+### 本地运行
 
-1. 在项目根目录构建并启动服务：
-
-```bash
-docker-compose up --build -d
-```
-
-2. 访问前端：
-
-打开 http://localhost:3004 或 http://127.0.0.1:3004/login.html
-
-3. 查看日志：
-
-```bash
-tail -f logs/login_app.log
-```
-
-### Local (no Docker)
-
-1. 安装依赖：
+安装依赖：
 
 ```bash
 npm install
 ```
 
-2. 启动服务（示例）：
-
-- PowerShell（Windows，会话级环境变量）：
+启动服务：
 
 ```powershell
 $Env:PORT='3004'
 node src/server.js
 ```
 
-- CMD（Windows 临时设置）：
+打开页面：
 
-```cmd
-set PORT=3004 && node src/server.js
-```
+`http://localhost:3004/login.html`
 
-- bash（macOS / Linux / Git Bash）:
+### Docker 运行
 
 ```bash
-PORT=3004 node src/server.js
+docker-compose up --build -d
 ```
 
-3. 访问前端： http://localhost:3004/login.html
+启动后访问：
 
-## Testing & Logs
+`http://localhost:3004/login.html`
 
-### Logs auto-generation
+## ECS 风格日志设计
 
-- 日志文件 `logs/login_app.log` 由后端 `src/logger.js` 自动写入：服务启动、认证成功/失败、账户锁定、输入校验错误与服务异常等事件都会追加到该文件。启动服务前请确保项目根目录下存在 `logs/` 目录（项目启动时通常会自动创建）。
+日志文件为 `logs/login_app.log`，格式是 JSON Lines，也就是一行一个 JSON 对象。字段命名尽量贴近 ECS，便于后续接入 Elasticsearch、Kibana 或其他日志分析流程。
 
-**来源 IP 检测**：服务器会优先使用 `X-Forwarded-For`（如果存在）再回退到连接的 `remoteAddress` 来确定 `src_ip`，前端无需手动填写来源 IP。
+核心字段包括：
 
-### Test accounts
+- `@timestamp`：UTC 时间戳
+- `message`：摘要消息
+- `log.level`：日志级别
+- `host.name`：主机名
+- `service.name`：服务名，固定为 `login_app`
+- `event.kind`：固定为 `event`
+- `event.category`：事件大类，例如 `authentication`、`web`、`process`
+- `event.type`：事件类型，例如 `start`、`end`、`access`、`error`
+- `event.action`：业务动作，例如 `auth_success`、`auth_failed`
+- `event.outcome`：结果，例如 `success`、`failure`
+- `event.code`：内部事件名，例如 `auth.login_success`
+- `event.reason`：失败原因
+- `user.id`：用户 ID
+- `user.roles`：用户角色
+- `source.ip`：来源 IP
+- `trace.id`：请求关联 ID
 
-固定测试账号已写入 `db/init.sql`（并同步到 `data/users.json`），示例：
+以及常见上下文字段：
+
+- `http.request.method`
+- `url.path`
+- `server.port`
+- `process.signal`
+
+日志器会自动过滤敏感字段，例如密码、token、密码哈希等不会进入主日志。
+
+示例：
+
+```json
+{
+  "@timestamp": "2026-06-11T10:15:36.335Z",
+  "message": "login failed",
+  "log.level": "WARNING",
+  "host.name": "LAPTOP-1MR5IFK6",
+  "service.name": "login_app",
+  "event.kind": "event",
+  "event.category": ["authentication"],
+  "event.type": ["start"],
+  "event.action": "auth_failed",
+  "event.outcome": "failure",
+  "event.code": "auth.login_fail",
+  "event.reason": "user_not_found_or_disabled",
+  "user.id": "1110000000",
+  "source.ip": "::1",
+  "trace.id": "3d789d3f-8608-401f-8137-3d0954357409"
+}
+```
+
+来源 IP 识别规则：
+
+- 优先读取 `X-Forwarded-For`
+- 否则回退到连接的 `remoteAddress`
+- 只有在 `ALLOW_CLIENT_SOURCE_IP=true` 时，才允许测试请求体显式传入 `sourceIp`
+
+## 测试与日志生成
+
+最小冒烟测试：
+
+```bash
+npm test
+```
+
+或：
+
+```bash
+npm run smoke
+```
+
+该测试会直接调用日志器，并验证 `login_app.log` 中写出的 ECS 风格 JSON 记录是否包含预期字段。
+
+批量生成测试日志：
+
+```bash
+node scripts/run_tests.js
+```
+
+这个脚本会模拟成功登录、错误密码、非法用户 ID 和重复失败触发锁定等场景，适合为实验分析生成样本日志。
+
+## 测试账号
+
+固定测试账号已写入 `db/init.sql`，并同步到 `data/users.json`：
 
 - `2024000001` / `Study2026!`
 - `2024000002` / `UniAccess#1`
@@ -80,92 +139,43 @@ PORT=3004 node src/server.js
 - `2024000004` / `SecurePass88`
 - `2024000005` / `Campus2026!`
 
-### Quick test scripts
+## 日志解析
 
-- `node scripts/run_tests.js`：模拟若干登录请求并触发锁定.\
-- `node tests/smoke.js`：本地 smoke 测试（检查 logger 输出）。
+日志解析脚本位于 [scripts/parse_logs.py](c:/Users/14300/Desktop/网络安全/auth_log_exp/scripts/parse_logs.py:1)。
 
-### 常用测试方法与命令
+它支持两类输入：
 
-- 冒烟（快速验通）：启动服务后运行最小验证脚本，确认服务能写入日志并返回基本响应：
+- 当前版本的 `winston` ECS 风格 JSON Lines 日志
+- 旧版类 syslog 风格文本日志
 
-```bash
-npm install
-# PowerShell (Windows)
-$Env:PORT='3004'; node src/server.js
-# 或在另一个终端单独运行 node src/server.js
-node tests/smoke.js
+解析输出会统一成 ECS 风格字段，并自动做这些标准化处理：
 
-# bash (macOS / Linux / Git Bash)
-# PORT=3004 node src/server.js
-```
+- 时间字段统一成 UTC ISO 8601 格式
+- `source.ip` 统一规范化，IPv4-mapped IPv6 会折叠成 IPv4
+- `server.port` 转为数值类型
+- `event.action`、`event.reason` 收敛成稳定枚举
+- 自动补齐 `event.kind`、`event.category`、`event.type`、`event.outcome`
+- 空字段自动移除
 
-- 批量/场景化测试（生成用于分析的日志）：编辑 `scripts/run_tests.js` 中的参数（总请求数、并发、失败比率、是否并发），然后运行：
+示例：
 
 ```bash
-node scripts/run_tests.js
+python scripts/parse_logs.py logs/login_app.log --format json
+python scripts/parse_logs.py logs/login_app.log --format csv > parsed.csv
 ```
 
-- 在 Docker 模式下（服务在容器内写日志到容器的 `logs/`），使用 `docker-compose up --build -d` 启动后，可在宿主机查看挂载的 `logs/login_app.log`：
+## 目录结构
 
-```bash
-docker-compose up --build -d
-tail -f logs/login_app.log
-```
+- `public/`：前端登录页面
+- `src/`：服务端源码
+- `data/`：本地用户数据
+- `db/`：数据库初始化脚本
+- `logs/`：运行期日志目录
+- `scripts/`：解析与测试脚本
+- `tests/`：最小验证脚本
 
-- 解析日志为结构化数据（JSON/CSV），用于实验四：
+## 说明
 
-```bash
-python3 scripts/parse_logs.py logs/login_app.log --format json   # 输出 JSON 到 stdout
-python3 scripts/parse_logs.py logs/login_app.log --format csv > parsed.csv
-```
-
-### 建议的测试规模与样本构成
-
-- 小规模：100 用户，~500 次请求（功能验证）
-- 中等规模：1,000 用户，~10,000 次请求（统计分析、ML 特征提取）
-- 大规模：10,000+ 用户，≥100,000 次请求（压力与异常检测评估）
-- 示例行为比例（可在 `scripts/run_tests.js` 中调整）
-
-  - 正常：90%（成功登录）
-  - 探测/凭证填充：6%（中等失败频率）
-  - 单源暴力：3%（高频失败，触发锁定）
-  - 分布式慢速：1%（大量 IP 低频失败）
-
-### 注意事项
-
-- 本地（非 Docker）模式使用 `data/users.json`，频繁并发写入可能造成文件竞态；若要做高并发/长时间测试，请使用 Docker 模式并启用数据库（`USE_DB=true`）。
-
-### Log parsing
-
-- `python3 scripts/parse_logs.py`：解析 `logs/login_app.log`，输出 JSON 并写入 `logs/parsed_logs.csv`。
-
-日志示例：
-
-```
-2026-06-10T12:05:12.345Z myhost login_app: level=INFO event_type=auth_success user=2024000001 src_ip=127.0.0.1 message="login success"
-```
-
-## Architecture
-
-### Project layout
-
-- `public/` — 前端登录页面。\
-- `src/` — 后端源码（入口：`src/server.js`；日志：`src/logger.js`；认证子模块在 `src/auth/`）。\
-- `data/` — 本地用户数据（仅在非 Docker 模式下使用）。\
-- `db/` — Postgres 初始化脚本（用于 Docker 模式）。\
-- `logs/` — 运行时日志（`login_app.log`）。\
-- `scripts/` — 辅助脚本（解析、测试）。
-
-### `src/auth` 目录（关键文件）
-
-- `auth-router.js`：处理 `/api/v1/auth/*` 路由，负责输入校验、锁定检查、密码验证、token 签发、更新最后登录时间，并在每个关键点写日志（成功/失败/锁定/非法输入）。日志字段统一为 `user` 与 `src_ip`。
-- `login-rate-limit.js`：实现内存失败计数与锁定（默认 5 次失败 → 锁定 15 分钟）。\
-- `user-store.js`：提供两种后端：本地 JSON（`data/users.json`）与 Postgres（当环境变量 `USE_DB=true` 时）。对外提供 `findUser` / `updateUser`（异步兼容）。\
-- `token-service.js`：签发 HMAC 签名的 access token，并用内存 Map 管理一次性 refresh token。
-
-## Security & Notes
-
-- 主日志禁止记录明文密码或完整 tokens。\
-- 日志包含失败原因标签（`password_mismatch`、`user_not_found_or_disabled`、`validation_failed`、`too_many_failures` 等），便于后续分析。\
-- 如果需要更强的持久性或生产级安全，请将 refresh token 存储迁移到持久存储（DB/Redis），并对 `token_service` 引入更严格的密钥管理。
+- 本地模式默认使用 `data/users.json`
+- 高频并发测试更建议用 Docker + Postgres，避免 JSON 文件并发写入带来的竞态
+- 这套字段命名是 ECS 风格近似映射，适合课程实验和日志分析；如果后续接入完整 ELK，可以继续细化字段集

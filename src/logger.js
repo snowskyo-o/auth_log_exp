@@ -1,113 +1,202 @@
 const fs = require('node:fs');
-const path = require('node:path');
 const os = require('node:os');
+const path = require('node:path');
+const winston = require('winston');
 
 const LOG_DIR = path.join(__dirname, '..', 'logs');
 const LOG_FILE = path.join(LOG_DIR, 'login_app.log');
 const SERVICE_NAME = 'login_app';
+
+const EVENT_ACTION_MAP = {
+  'app.start': 'service_start',
+  'app.shutdown': 'service_stop',
+  'app.error_unhandled': 'service_error',
+  'app.request': 'app_request',
+  'auth.login_success': 'auth_success',
+  'auth.login_fail': 'auth_failed',
+  'auth.account_locked': 'account_locked',
+  'auth.logout': 'auth_logout',
+};
+
+const EVENT_METADATA = {
+  service_start: { category: ['process'], type: ['start'], outcome: 'success' },
+  service_stop: { category: ['process'], type: ['end'], outcome: 'success' },
+  service_error: { category: ['process'], type: ['error'], outcome: 'failure' },
+  app_request: { category: ['web'], type: ['access'], outcome: 'unknown' },
+  auth_success: { category: ['authentication'], type: ['start'], outcome: 'success' },
+  auth_failed: { category: ['authentication'], type: ['start'], outcome: 'failure' },
+  account_locked: { category: ['authentication'], type: ['change'], outcome: 'failure' },
+  auth_logout: { category: ['authentication'], type: ['end'], outcome: 'success' },
+  invalid_input: { category: ['authentication'], type: ['info'], outcome: 'failure' },
+  unknown: { category: ['application'], type: ['info'], outcome: 'unknown' },
+};
 
 function ensureLogDir() {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
 function sanitizeExtra(extra) {
-  // remove sensitive keys if present
-  const forbidden = new Set(['password', 'passwordHash', 'passwordSeed', 'accessToken', 'refreshToken', 'token']);
+  const forbidden = new Set([
+    'password',
+    'passwordHash',
+    'passwordSeed',
+    'accessToken',
+    'refreshToken',
+    'token',
+  ]);
   const out = {};
-  for (const k of Object.keys(extra || {})) {
-    if (forbidden.has(k)) continue;
-    out[k] = extra[k];
+  for (const key of Object.keys(extra || {})) {
+    if (forbidden.has(key)) continue;
+    out[key] = extra[key];
   }
   return out;
 }
 
-function mapEventType(event, extra) {
-  // map various internal event names to required event_type values
-  if (!event) return 'unknown';
-  const e = String(event);
-  if (e === 'app.start') return 'service_start';
-  if (e === 'app.shutdown') return 'service_stop';
-  if (e === 'app.error_unhandled') return 'service_error';
-  if (e.includes('auth.login_success') || e === 'auth.login_success') return 'auth_success';
-  if (e.includes('auth.login_fail') || e === 'auth.login_fail') {
-    if (extra && extra.reason === 'validation_failed') return 'invalid_input';
-    return 'auth_failed';
+function mapEventAction(event, extra) {
+  const raw = String(event || '').trim();
+  if (!raw) return 'unknown';
+  if (raw === 'auth.login_fail' && extra && extra.reason === 'validation_failed') {
+    return 'invalid_input';
   }
-  if (e.includes('auth.account_locked') || e === 'auth.account_locked') return 'account_locked';
-  return e.replace(/\./g, '_');
+  return EVENT_ACTION_MAP[raw] || raw.replace(/\./g, '_');
 }
 
-function levelName(level) {
-  if (!level) return 'INFO';
-  return String(level).toUpperCase();
-}
-
-function formatMessage(eventType, extra) {
+function defaultMessage(eventAction, extra) {
   if (extra && extra.message) return String(extra.message);
-  // provide default messages for common events
-  switch (eventType) {
-    case 'service_start': return 'service started';
-    case 'service_stop': return 'service stopped';
-    case 'service_error': return 'service error';
-    case 'auth_success': return 'login success';
-    case 'auth_failed': return 'login failed';
-    case 'account_locked': return 'account locked due to repeated failures';
-    case 'invalid_input': return 'invalid input';
-    default: return '';
+  switch (eventAction) {
+    case 'service_start':
+      return 'service started';
+    case 'service_stop':
+      return 'service stopped';
+    case 'service_error':
+      return 'service error';
+    case 'app_request':
+      return 'request received';
+    case 'auth_success':
+      return 'login success';
+    case 'auth_failed':
+      return 'login failed';
+    case 'account_locked':
+      return 'account locked due to repeated failures';
+    case 'auth_logout':
+      return 'logout success';
+    case 'invalid_input':
+      return 'invalid input';
+    default:
+      return '';
   }
 }
 
-function toLine(entry) {
-  ensureLogDir();
-  const ts = new Date().toISOString();
-  const host = os.hostname();
-  const extra = sanitizeExtra(entry || {});
-  const eventType = mapEventType(entry.event || entry.event_type || '', extra);
-  const level = levelName(entry.level || extra.level || 'INFO');
-  const user = extra.user || extra.userId || '';
-  const src_ip = extra.src_ip || extra.sourceIp || extra.sourceIp || '';
-  const message = formatMessage(eventType, extra);
+function normalizeValue(value) {
+  if (value === undefined || value === null) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'bigint') return Number(value);
+  if (typeof value === 'object') return undefined;
+  return value;
+}
 
-  // Build key=value pairs, ensure values with spaces/quotes are quoted
-  const pairs = [];
-  pairs.push(`level=${level}`);
-  pairs.push(`event_type=${eventType}`);
-  if (user) pairs.push(`user=${user}`);
-  if (src_ip) pairs.push(`src_ip=${src_ip}`);
-  pairs.push(`message="${String(message).replace(/"/g, '\\"')}"`);
+function setField(target, key, value) {
+  if (value === undefined || value === null || value === '') return;
+  target[key] = value;
+}
 
-  // include other non-sensitive extra fields for analysis
-  for (const k of Object.keys(extra)) {
-    if (['user', 'userId', 'sourceIp', 'src_ip', 'message', 'level'].includes(k)) continue;
-    const v = extra[k];
-    if (v === undefined || v === null) continue;
-    if (typeof v === 'object') continue;
-    // simple key=value (no quoting unless contains space)
-    const val = String(v);
-    if (/\s/.test(val) || /"/.test(val)) {
-      pairs.push(`${k}="${val.replace(/"/g, '\\"')}"`);
-    } else {
-      pairs.push(`${k}=${val}`);
+function buildEcsRecord(info) {
+  const extra = sanitizeExtra(info);
+  const eventCode = String(extra.event || extra.event_type || '').trim();
+  const eventAction = mapEventAction(eventCode, extra);
+  const metadata = EVENT_METADATA[eventAction] || EVENT_METADATA.unknown;
+
+  const record = {
+    '@timestamp': new Date().toISOString(),
+    message: defaultMessage(eventAction, extra),
+    'log.level': String(info.level || 'info').toUpperCase(),
+    'host.name': os.hostname(),
+    'service.name': SERVICE_NAME,
+    'event.kind': 'event',
+    'event.category': metadata.category,
+    'event.type': metadata.type,
+    'event.action': eventAction,
+    'event.outcome': metadata.outcome,
+  };
+
+  setField(record, 'event.code', eventCode);
+  setField(record, 'user.id', extra.user || extra.userId);
+  setField(record, 'source.ip', extra.src_ip || extra.sourceIp);
+  setField(record, 'trace.id', extra.requestId);
+  setField(record, 'event.reason', extra.reason);
+  setField(record, 'http.request.method', extra.method);
+  setField(record, 'url.path', extra.path);
+  setField(record, 'server.port', extra.port);
+  setField(record, 'process.signal', extra.signal);
+
+  if (extra.role) {
+    record['user.roles'] = [String(extra.role)];
+  }
+
+  for (const key of Object.keys(extra)) {
+    if (
+      [
+        'level',
+        'message',
+        'event',
+        'event_type',
+        'user',
+        'userId',
+        'src_ip',
+        'sourceIp',
+        'requestId',
+        'reason',
+        'method',
+        'path',
+        'port',
+        'signal',
+        'failCount',
+        'maxAttempts',
+        'forceChangePassword',
+        'lockedUntil',
+        'role',
+      ].includes(key)
+    ) {
+      continue;
     }
+
+    const value = normalizeValue(extra[key]);
+    if (value === undefined) continue;
+    record[`labels.${key}`] = value;
   }
 
-  return `${ts} ${host} ${SERVICE_NAME}: ${pairs.join(' ')}`;
+  return record;
 }
+
+const ecsFormat = winston.format((info) => {
+  const record = buildEcsRecord(info);
+  for (const key of Object.keys(info)) {
+    delete info[key];
+  }
+  Object.assign(info, record);
+  return info;
+});
+
+ensureLogDir();
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(ecsFormat(), winston.format.json()),
+  transports: [
+    new winston.transports.File({ filename: LOG_FILE }),
+    new winston.transports.Console(),
+  ],
+});
 
 function writeLog(entry) {
-  try {
-    const line = toLine(entry) + '\n';
-      fs.appendFileSync(LOG_FILE, line, 'utf8');
-      // also print to stdout so running terminal shows live logs
-      try { console.log(line.trim()); } catch (e) {}
-  } catch (err) {
-    // best-effort: if logging fails, write to console but avoid throwing
-    try { console.error('logger write failed', err && err.message); } catch (e) {}
-  }
+  logger.write({ ...(entry || {}), level: (entry && entry.level) || 'info' });
+  return new Promise((resolve) => setTimeout(resolve, 25));
 }
 
 module.exports = {
   LOG_DIR,
   LOG_FILE,
+  SERVICE_NAME,
+  logger,
   writeLog,
 };
